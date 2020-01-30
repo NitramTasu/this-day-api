@@ -22,12 +22,12 @@ function searchByThisDay(title) {
       services.searchContent(formatedTitle)
       .then(function (resp){
         var facts = extractFacts(resp.data);
-        var names = extractNames(facts);
-        var response = getImageNameList(names);
-        response.then(imageNameList => {
-          var resp = getImagesByName(imageNameList);
-          resp.then(urls => {
-            console.log(urls);
+        var factsWithNames = extractNames(facts);
+        var response = getImageNameList(factsWithNames);
+        response.then(factsWithNames => {
+          var resp = getImagesByName(factsWithNames);
+          resp.then(factsWithNames => {
+            console.log(factsWithNames);
           })
         })
         
@@ -38,37 +38,50 @@ function searchByThisDay(title) {
     })
 }
 
-async function getImageNameList(nameList){
-  var imageNameList = [];
-  for (let i = 0; i < 10; i++) {
-    var fomattedName = nameList[i].trim().split(' ').join('_');
-    try {
-      var response  = await services.searchImageName(fomattedName);
-      imageNameList.push(Object.values(response.data["query"]["pages"])[0]["images"][3]["title"]);
-    } catch (error) {
-      //console.log(error);
+async function getImageNameList(factsWithNames){
+  for (let i = 0; i < factsWithNames.length; i++) {
+    var name = factsWithNames[i].name;
+    if(name){
+      var fomattedName = name.trim().split(' ').join('_');
+      try {
+        var response  = await services.searchImageName(fomattedName);
+        factsWithNames[i].imageName = Object.values(response.data["query"]["pages"])[0]["images"][3]["title"]
+      } catch (error) {
+        //console.log(error);
+      }
     }
   }
-  return imageNameList;
+  return factsWithNames;
 }
 
-async function getImagesByName(imageNameList){
-  var urlImageList = [];
-  for (let i = 0; i < 10; i++) {
-    try {
-      var response  = await services.searchImageByName(imageNameList[i]);
-      urlImageList.push(Object.values(response.data["query"]["pages"])[0]["imageinfo"][0]["url"]);
-    } catch (error) {
-      //console.log(error);
+async function getImagesByName(factsWithNames){
+
+  for (let i = 0; i < factsWithNames.length; i++) {
+    var imageName = factsWithNames[i].imageName;
+    if(imageName){
+      try {
+        var response  = await services.searchImageByName(imageName);
+        factsWithNames[i].imageUrl = Object.values(response.data["query"]["pages"])[0]["imageinfo"][0]["url"]
+      } catch (error) {
+        //console.log(error);
+      }
     }
   }
-  return urlImageList;
+  return factsWithNames;
 }
 
 function extractNames(facts) {
   var regx = /([A-Z][a-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ]+)[ ]*([A-Z][a-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ]+)[ ]*(([A-Z][a-záàâãéèêíïóôõöúçñÁÀÂÃÉÈÍÏÓÔÕÖÚÇÑ]+)[ ]*)*/g;
-  var groups = [...facts.matchAll(regx)];
-  return groups.map(m => m[0]);
+  for (let i = 0; i < facts.length; i++) {
+    var matched = facts[i].match(regx);
+    if (matched){
+      facts[i] = { fact: facts[i], name: matched[0].trim()};
+    }else{
+      facts[i] = { fact: facts[i], name: null};
+    }
+    
+  }
+  return facts;
 }
 
 function extractFacts(data) {
@@ -82,7 +95,7 @@ function extractFacts(data) {
   formatted.shift();
   const oneString = formatted.reduce((t, e) => t + e);
   const onlyFacts = [...oneString.matchAll(/(\d){4} — (.)+/g)];
-  return onlyFacts.map( m => m[0]).reduce((t, e) =>  t+'\n'+ e);
+  return onlyFacts.map( m => m[0]);
 }
 
 function formatSuggestionTitle(data) {

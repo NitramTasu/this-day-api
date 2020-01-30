@@ -25,7 +25,10 @@ function searchByThisDay(title) {
         var names = extractNames(facts);
         var response = getImageNameList(names);
         response.then(imageNameList => {
-          console.log(imageNameList);
+          var resp = getImagesByName(imageNameList);
+          resp.then(urls => {
+            console.log(urls);
+          })
         })
         
       })
@@ -47,6 +50,19 @@ async function getImageNameList(nameList){
     }
   }
   return imageNameList;
+}
+
+async function getImagesByName(imageNameList){
+  var urlImageList = [];
+  for (let i = 0; i < 10; i++) {
+    try {
+      var response  = await services.searchImageByName(imageNameList[i]);
+      urlImageList.push(Object.values(response.data["query"]["pages"])[0]["imageinfo"][0]["url"]);
+    } catch (error) {
+      //console.log(error);
+    }
+  }
+  return urlImageList;
 }
 
 function extractNames(facts) {
